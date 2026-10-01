@@ -1,9 +1,13 @@
 # ReverseRDP relay server
 
 인바운드가 차단된 네트워크에 RDP 로 접속하기 위한 Rust 기반의 TCP 중계 프로젝트입니다.
+
 Rust 의 Tokio를 사용하여 호스트, 게스트와 각각 연결된 두 쌍의 비동기 TCP 세션을 생성한 후, 
+
 두 소켓의 송수신 연결을 서로 포워딩 해줌으로써 TCP relay 채널을 생성합니다.
+
 그 다음, RDP 로 접속하고자 하는 윈도우에서 agent 를 실행해 TCP 채널에서 전송되는 패킷을 RDP listen 포트로 전송합니다.
+
 마지막으로 호스트에서 relay 서버에 RDP 연결 패킷을 보내면, 해당 패킷이 게스트 PC 의 RDP listen 포트까지 전달되어 RDP 연결이 수립됩니다. 
 
 
