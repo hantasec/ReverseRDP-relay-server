@@ -16,24 +16,50 @@ Rust 의 Tokio를 사용하여 호스트, 게스트와 각각 연결된 두 쌍�
 - `rdp-reverse-relay`: 운영자 측에서 RDP 클라이언트와 터널 연결을 중계합니다.
 - `rdp-reverse-agent`: Windows 대상에서 Relay로 아웃바운드 연결을 생성하고 로컬 RDP 서비스(`127.0.0.1:3389`)와 연결합니다.
 
+현재 실습 구성은 다음과 같습니다.
+
+- T-Kali Relay: `203.230.56.162`
+- 관리자 Windows Agent: `203.230.41.34/27`
+- Relay 터널 리스너: `203.230.56.162:14443`
+- Relay 로컬 RDP 리스너: `127.0.0.1:13389`
+- Agent 로컬 RDP 대상: `127.0.0.1:3389`
+- Cacti와 관리 DB 주소는 이 프로그램이 직접 사용하지 않습니다.
+
 ## 빌드
 
-각 프로젝트 폴더에서 cargo build 명령어로 실행 파일을 생성합니다.
+### Kali Relay
 
-```powershell
-cargo build --release
+```bash
+chmod +x scripts/build-kali-relay.sh scripts/run-kali-relay.sh
+./scripts/build-kali-relay.sh
 ```
 
-생성 파일:
+생성 파일: `dist/rdp-reverse-relay-linux-x86_64`
 
-- `rdp-reverse-relay/target/release/rdp-reverse-relay.exe`
-- `rdp-reverse-agent/target/release/rdp-reverse-agent.exe`
+### Windows Agent
+
+```powershell
+& .\scripts\build-windows-agent.ps1
+```
+
+생성 파일: `dist/rdp-reverse-agent-windows-x86_64.exe`
+
+Rust가 없는 배포 대상에는 GitHub Actions의 `Build binaries` 실행 결과에서 다음 완성 파일을 내려받아 전달할 수 있습니다.
+
+- `rdp-reverse-relay-linux-x86_64`
+- `rdp-reverse-agent-windows-x86_64.exe`
 
 ## 실행 순서
 
-1. Relay 호스트에서 `rdp-reverse-relay.exe`를 실행합니다.
-2. Windows 게스트에서 `rdp-reverse-agent.exe`를 실행합니다.
-3. Relay 호스트에서 Relay 서버로 RDP 연결을 실시합니다.
+1. T-Kali에서 `./scripts/run-kali-relay.sh`를 실행합니다.
+2. 관리자 Windows에서 `203.230.56.162:14443` 도달성과 `127.0.0.1:3389` 로컬 RDP를 확인합니다.
+3. 관리자 Windows에서 `dist\rdp-reverse-agent-windows-x86_64.exe`를 실행합니다.
+4. T-Kali에서 `127.0.0.1:13389`로 FreeRDP를 연결합니다. Windows의 실제 컴퓨터 이름과 승인된 시험 계정을 사용합니다.
+
+기본 주소는 환경변수로 덮어쓸 수 있습니다.
+
+- Relay: `RDP_LISTEN`, `TUNNEL_LISTEN`
+- Agent: `RELAY_ADDRESS`, `LOCAL_RDP_ADDRESS`
 
 ## 주의
 

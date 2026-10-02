@@ -1,15 +1,12 @@
-#![windows_subsystem = "windows"]
-
+use std::env;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::tcp::OwnedWriteHalf;
-use tokio::net::TcpStream;
 
-
-const RELAY_ADDRESS: &str = "172.16.121.4:14443";
-const LOCAL_RDP_ADDRESS: &str = "127.0.0.1:3389";
-
+const DEFAULT_RELAY_ADDRESS: &str = "203.230.56.162:14443";
+const DEFAULT_LOCAL_RDP_ADDRESS: &str = "127.0.0.1:3389";
 
 async fn connect_socket(address: &str, connection_name: &str) -> std::io::Result<TcpStream> {
     println!("{connection_name} 연결 시도 : {address}");
@@ -28,8 +25,11 @@ async fn connect_socket(address: &str, connection_name: &str) -> std::io::Result
     }
 }
 
-
-async fn forward_data(mut reader: OwnedReadHalf, mut writer: OwnedWriteHalf, direction: &str) -> std::io::Result<u64> {
+async fn forward_data(
+    mut reader: OwnedReadHalf,
+    mut writer: OwnedWriteHalf,
+    direction: &str,
+) -> std::io::Result<u64> {
     let mut buffer = [0u8; 4096];
     let mut total_bytes = 0u64;
 
@@ -37,9 +37,7 @@ async fn forward_data(mut reader: OwnedReadHalf, mut writer: OwnedWriteHalf, dir
         let read_result = reader.read(&mut buffer).await;
 
         let bytes_read = match read_result {
-            Ok(bytes_read) => {
-                bytes_read
-            }
+            Ok(bytes_read) => bytes_read,
             Err(error) => {
                 println!("[{direction}] 읽기 실패 : {error}");
                 return Err(error);
@@ -68,14 +66,18 @@ async fn forward_data(mut reader: OwnedReadHalf, mut writer: OwnedWriteHalf, dir
     Ok(total_bytes)
 }
 
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    let relay_address =
+        env::var("RELAY_ADDRESS").unwrap_or_else(|_| DEFAULT_RELAY_ADDRESS.to_string());
+    let local_rdp_address =
+        env::var("LOCAL_RDP_ADDRESS").unwrap_or_else(|_| DEFAULT_LOCAL_RDP_ADDRESS.to_string());
+
     // 중계 서버의 터널 포트에 연결한다.
-    let relay_socket = connect_socket(RELAY_ADDRESS, "Relay").await?;
+    let relay_socket = connect_socket(&relay_address, "Relay").await?;
 
     // Windows에서 실행 중인 로컬 RDP 서비스에 연결한다.
-    let local_rdp_socket = connect_socket(LOCAL_RDP_ADDRESS, "Local RDP").await?;
+    let local_rdp_socket = connect_socket(&local_rdp_address, "Local RDP").await?;
 
     // 각 TCP 소켓을 읽기와 쓰기 객체로 분리한다.
     let (relay_reader, relay_writer) = relay_socket.into_split();
